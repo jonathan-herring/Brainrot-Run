@@ -3,7 +3,18 @@
       margin: 0;
       overflow: hidden;
     }
+  
+    #score {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      font-size: 24px;
+      z-index: 1;
+    }
   </style>
+  
+  <div id="score">Score: 0</div>
   
   <script
     async
@@ -36,6 +47,9 @@
     document.body.appendChild(renderer.domElement)
   
     const controls = new OrbitControls(camera, renderer.domElement)
+  
+    let score = 0;
+    const scoreElement = document.getElementById('score');
   
     class Box extends THREE.Mesh {
       constructor({
@@ -81,6 +95,14 @@
   
         if (this.bottom <= ground.top) this.velocity.y = 0
       }
+  
+      checkCollision(other) {
+        return (
+          Math.abs(this.position.x - other.position.x) < (this.width + other.width) / 2 &&
+          Math.abs(this.position.y - other.position.y) < (this.height + other.height) / 2 &&
+          Math.abs(this.position.z - other.position.z) < (this.depth + other.depth) / 2
+        );
+      }
     }
   
     const player = new Box({
@@ -97,6 +119,9 @@
   
     const ground = new THREE.Group();
     scene.add(ground);
+  
+    const obstacles = new THREE.Group();
+    scene.add(obstacles);
   
     const createGroundSegment = (z) => {
       const segment = new Box({
@@ -130,9 +155,33 @@
       }
     }
   
+    const createObstacleLine = (z) => {
+      const greenLane = Math.floor(Math.random() * 3);
+      for (let i = 0; i < 3; i++) {
+        const color = i === greenLane ? '#00ff00' : '#ff0000';
+  
+        const obstacle = new Box({
+          width: 1,
+          height: 1,
+          depth: 1,
+          color,
+          position: {
+            x: -3 + i * 3,
+            y: 0,
+            z
+          }
+        });
+  
+        obstacles.add(obstacle);
+      }
+    }
+  
     for (let i = 0; i < 10; i++) {
       createGroundSegment(-10 * i);
     }
+  
+    // Create the first obstacle line
+    createObstacleLine(-50);
   
     const light = new THREE.DirectionalLight(0xffffff, 1);
     light.position.y = 3;
@@ -195,6 +244,27 @@
       }
   
       player.update();
+  
+      // Check collisions with obstacles
+      obstacles.children.forEach(obstacle => {
+        obstacle.position.z += 0.05;
+  
+        if (obstacle.position.z > camera.position.z + 10) {
+          obstacles.remove(obstacle);
+          createObstacleLine(obstacle.position.z - 250); // Spawn a new obstacle line further ahead
+        }
+  
+        if (player.checkCollision(obstacle)) {
+          if (obstacle.material.color.getHexString() === '00ff00') {
+            score++;
+            scoreElement.innerText = `Score: ${score}`;
+            obstacles.remove(obstacle);
+          } else {
+            alert("Game Over! Final Score: " + score);
+            window.location.reload();
+          }
+        }
+      });
   
       // Camera follows player
       camera.position.x = player.position.x;
