@@ -1,6 +1,7 @@
 <style>
     body {
       margin: 0;
+      overflow: hidden;
     }
   </style>
   
@@ -35,134 +36,173 @@
     document.body.appendChild(renderer.domElement)
   
     const controls = new OrbitControls(camera, renderer.domElement)
-
+  
     class Box extends THREE.Mesh {
-        constructor({
-            width, 
-            height, 
-            depth, 
-            color='#00ff00', 
-            velocity = {
-            x: 0,
-            y: 0,
-            z: 0
-            },
-            position = {
-                x: 0,
-                y: 0,
-                z: 0
-            }
-        }) {
-            super(
-                new THREE.BoxGeometry(width, height, depth), 
-                new THREE.MeshBasicMaterial({ color })
-            )
-
-            this.width = width
-            this.height = height
-            this.depth = depth
-
-            this.position.set(position.x, position.y, position.z)
-
-            this.bottom = this.position.y - this.height / 2;
-            this.top = this.position.y + this.height / 2;
-
-            this.velocity = velocity
+      constructor({
+        width,
+        height,
+        depth,
+        color = '#00ff00',
+        velocity = {
+          x: 0,
+          y: 0,
+          z: 0
+        },
+        position = {
+          x: 0,
+          y: 0,
+          z: 0
         }
-
-        update() {
-            this.bottom = this.position.y - this.height / 2;
-            this.top = this.position.y + this.height / 2;
-
-            this.position.y += this.velocity.y;
-            this.position.x += this.velocity.x;
-
-            if (this.bottom <= ground.top) this.velocity.y = 0
-        }
+      }) {
+        super(
+          new THREE.BoxGeometry(width, height, depth),
+          new THREE.MeshBasicMaterial({ color })
+        )
+  
+        this.width = width
+        this.height = height
+        this.depth = depth
+  
+        this.position.set(position.x, position.y, position.z)
+  
+        this.bottom = this.position.y - this.height / 2;
+        this.top = this.position.y + this.height / 2;
+  
+        this.velocity = velocity
+      }
+  
+      update() {
+        this.bottom = this.position.y - this.height / 2;
+        this.top = this.position.y + this.height / 2;
+  
+        this.position.y += this.velocity.y;
+        this.position.x += this.velocity.x;
+        this.position.z += this.velocity.z;
+  
+        if (this.bottom <= ground.top) this.velocity.y = 0
+      }
     }
-    
-    const cube = new Box({
-        width: 1,
-        height: 1,
-        depth: 1,
-        velocity: {
-            x: 0,
-            y: -0.01,
-            z: 0
-        }
+  
+    const player = new Box({
+      width: 1,
+      height: 1,
+      depth: 1,
+      velocity: {
+        x: 0,
+        y: 0,
+        z: -0.05
+      }
     });
-    scene.add(cube);
- 
-    const ground = new Box({
-        width: 5,
+    scene.add(player);
+  
+    const ground = new THREE.Group();
+    scene.add(ground);
+  
+    const createGroundSegment = (z) => {
+      const segment = new Box({
+        width: 9,
         height: 0.5,
         depth: 10,
-        color: '#0000ff',
+        color: '#808080',
         position: {
-            x: 0,
-            y: -2,
-            z: 0
+          x: 0,
+          y: -2,
+          z
         }
-    })
-    scene.add(ground)
-
+      });
+      ground.add(segment);
+  
+      const laneColors = ['#ff0000', '#00ff00', '#0000ff'];
+  
+      for (let i = 0; i < 3; i++) {
+        const lane = new Box({
+          width: 3,
+          height: 0.6,
+          depth: 10,
+          color: laneColors[i],
+          position: {
+            x: -3 + i * 3,
+            y: -2.25,
+            z
+          }
+        });
+        ground.add(lane);
+      }
+    }
+  
+    for (let i = 0; i < 10; i++) {
+      createGroundSegment(-10 * i);
+    }
+  
     const light = new THREE.DirectionalLight(0xffffff, 1);
     light.position.y = 3;
     light.position.z = 2;
     scene.add(light);
   
-    camera.position.z = 5;
-
     const keys = {
-        a: {
-            pressed: false
-        },
-        d: {
-            pressed: false
-        }
+      a: {
+        pressed: false
+      },
+      d: {
+        pressed: false
+      }
     }
-
+  
     window.addEventListener('keydown', (event) => {
-        switch(event.code) {
-            case 'KeyA':
-                console.log("we pressed down a")
-                keys.a.pressed = true
-                break
-            case 'KeyD':
-                console.log("we pressed down d")
-                keys.d.pressed = true
-                break
-        }
+      switch (event.code) {
+        case 'KeyA':
+          keys.a.pressed = true
+          break
+        case 'KeyD':
+          keys.d.pressed = true
+          break
+      }
     })
-
+  
     window.addEventListener('keyup', (event) => {
-        switch(event.code) {
-            case 'KeyA':
-                console.log("we pressed down a")
-                keys.a.pressed = false
-                break
-            case 'KeyD':
-                console.log("we pressed down d")
-                keys.d.pressed = false
-                break
-        }
+      switch (event.code) {
+        case 'KeyA':
+          keys.a.pressed = false
+          break
+        case 'KeyD':
+          keys.d.pressed = false
+          break
+      }
     })
   
     function animate() {
       requestAnimationFrame(animate);
       renderer.render(scene, camera);
-
-      // movement
-      cube.velocity.x = 0
-      if (keys.a.pressed) {
-        cube.velocity.x = -0.01
-      } else if (keys.d.pressed) {
-        cube.velocity.x = 0.01
+  
+      // Infinite ground
+      ground.children.forEach(segment => {
+        segment.position.z += 0.05;
+        if (segment.position.z > camera.position.z + 10) {
+          segment.position.z -= 100;
+        }
+      });
+  
+      // Move player forward
+      player.position.z -= 0.05;
+  
+      // Move player sideways
+      if (keys.a.pressed && player.position.x > -3) {
+        player.position.x -= 3;
+        keys.a.pressed = false;
+      } else if (keys.d.pressed && player.position.x < 3) {
+        player.position.x += 3;
+        keys.d.pressed = false;
       }
-
-      cube.update(ground);
-    //   cube.rotation.x += 0.01
-    //   cube.rotation.y += 0.01
+  
+      player.update();
+  
+      // Camera follows player
+      camera.position.x = player.position.x;
+      camera.position.y = player.position.y + 2;
+      camera.position.z = player.position.z + 5;
+      camera.lookAt(player.position);
     }
+  
     animate()
   </script>
+  
