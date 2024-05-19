@@ -1,230 +1,168 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Photo Match Game</title>
-    <style>
-        body { margin: 0; }
-        canvas { display: block; }
-        #score {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            font-size: 24px;
-            color: white;
-        }
-        #start-screen, #game-over-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            font-size: 24px;
-            flex-direction: column;
-        }
-        #start-button, #play-again-button {
-            padding: 10px 20px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            margin-top: 20px;
-        }
-        #game-over-screen {
-            display: none;
-        }
-    </style>
-</head>
-<body>
-<div id="score">Score: 0</div>
-<div id="start-screen">
-    <div>Welcome to Photo Match Game</div>
-    <button id="start-button">Start Game</button>
-</div>
-<div id="game-over-screen">
-    <div>Game Over</div>
-    <button id="play-again-button">Play Again</button>
-</div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script>
-    let gameStarted = false;
-
-    const startScreen = document.getElementById('start-screen');
-    const gameOverScreen = document.getElementById('game-over-screen');
-    const startButton = document.getElementById('start-button');
-    const playAgainButton = document.getElementById('play-again-button');
-
-    startButton.addEventListener('click', () => {
-        startScreen.style.display = 'none';
-        startGame();
-    });
-
-    playAgainButton.addEventListener('click', () => {
-        gameOverScreen.style.display = 'none';
-        startGame();
-    });
-
-    function startGame() {
-        gameStarted = true;
-        score = 0;
-        updateScore();
-        playNewRound();
-        animate();
+<style>
+    body {
+      margin: 0;
     }
-
-    function gameOver() {
-        gameStarted = false;
-        gameOverScreen.style.display = 'flex';
+  </style>
+  
+  <script
+    async
+    src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"
+  ></script>
+  
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.150.1/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.150.1/examples/jsm/"
+      }
     }
+  </script>
+  
+  <script type="module">
+    import * as THREE from 'three'
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+  
+    const scene = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    )
+  
+    const renderer = new THREE.WebGLRenderer()
+    renderer.setSize(window.innerWidth, window.innerHeight)
+    document.body.appendChild(renderer.domElement)
+  
+    const controls = new OrbitControls(camera, renderer.domElement)
 
-    // Set up the scene
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+    class Box extends THREE.Mesh {
+        constructor({
+            width, 
+            height, 
+            depth, 
+            color='#00ff00', 
+            velocity = {
+            x: 0,
+            y: 0,
+            z: 0
+            },
+            position = {
+                x: 0,
+                y: 0,
+                z: 0
+            }
+        }) {
+            super(
+                new THREE.BoxGeometry(width, height, depth), 
+                new THREE.MeshBasicMaterial({ color })
+            )
 
-    // Add a simple floor
-    const floorGeometry = new THREE.PlaneGeometry(20, 1000);
-    const floorMaterial = new THREE.MeshBasicMaterial({ color: 0x808080 });
-    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-    floor.rotation.x = -Math.PI / 2;
-    scene.add(floor);
+            this.width = width
+            this.height = height
+            this.depth = depth
 
-    camera.position.z = 5;
-    camera.position.y = 1.5;
+            this.position.set(position.x, position.y, position.z)
 
-    // Add lighting
+            this.bottom = this.position.y - this.height / 2;
+            this.top = this.position.y + this.height / 2;
+
+            this.velocity = velocity
+        }
+
+        update() {
+            this.bottom = this.position.y - this.height / 2;
+            this.top = this.position.y + this.height / 2;
+
+            this.position.y += this.velocity.y;
+            this.position.x += this.velocity.x;
+
+            if (this.bottom <= ground.top) this.velocity.y = 0
+        }
+    }
+    
+    const cube = new Box({
+        width: 1,
+        height: 1,
+        depth: 1,
+        velocity: {
+            x: 0,
+            y: -0.01,
+            z: 0
+        }
+    });
+    scene.add(cube);
+ 
+    const ground = new Box({
+        width: 5,
+        height: 0.5,
+        depth: 10,
+        color: '#0000ff',
+        position: {
+            x: 0,
+            y: -2,
+            z: 0
+        }
+    })
+    scene.add(ground)
+
     const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(5, 10, 7.5).normalize();
+    light.position.y = 3;
+    light.position.z = 2;
     scene.add(light);
+  
+    camera.position.z = 5;
 
-    // Load assets
-    const textureLoader = new THREE.TextureLoader();
-    const audioLoader = new THREE.AudioLoader();
-    const listener = new THREE.AudioListener();
-    camera.add(listener);
-
-    // All images and audio files
-    const allImages = [
-        'assets/images/lebonbon.png',
-        'assets/images/mao.png',
-        'assets/images/noway.png',
-        'assets/images/opennanoor.png',
-        'assets/images/skibiditoilet.png',
-        'assets/images/stupidnugget.png'
-    ];
-
-    const allAudioFiles = [
-        'assets/audio/lebonbon.mp3',
-        'assets/audio/mao.mp3',
-        'assets/audio/noway.mp3',
-        'assets/audio/opennanoor.mp3',
-        'assets/audio/skibiditoilet.mp3',
-        'assets/audio/stupidnugget.mp3'
-    ];
-
-    let boxes = [];
-    let sounds = [];
-    let selectedSound;
-    let correctBoxIndex;
-    let score = 0;
-
-    function updateScore() {
-        document.getElementById('score').innerText = `Score: ${score}`;
-    }
-
-    function getRandomIndices(array, num) {
-        const indices = Array.from(Array(array.length).keys());
-        for (let i = indices.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [indices[i], indices[j]] = [indices[j], indices[i]];
-        }
-        return indices.slice(0, num);
-    }
-
-    function createBoxesAndSounds() {
-        const selectedIndices = getRandomIndices(allImages, 3);
-        boxes.forEach(box => scene.remove(box));
-        boxes = [];
-        sounds = [];
-
-        selectedIndices.forEach((index, i) => {
-            const material = new THREE.MeshBasicMaterial({ map: textureLoader.load(allImages[index]) });
-            const box = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material);
-            box.position.set(i * 2 - 2, 0.5, -10);
-            scene.add(box);
-            boxes.push(box);
-
-            const sound = new THREE.Audio(listener);
-            audioLoader.load(allAudioFiles[index], buffer => {
-                sound.setBuffer(buffer);
-            });
-            sounds.push(sound);
-        });
-    }
-
-    function playRandomSound() {
-        correctBoxIndex = Math.floor(Math.random() * sounds.length);
-        selectedSound = sounds[correctBoxIndex];
-        selectedSound.play();
-    }
-
-    function playNewRound() {
-        createBoxesAndSounds();
-        playRandomSound();
-    }
-
-    function checkCollision() {
-        const playerPosition = new THREE.Vector3();
-        camera.getWorldPosition(playerPosition);
-
-        for (let i = 0; i < boxes.length; i++) {
-            if (playerPosition.distanceTo(boxes[i].position) < 1) {
-                if (i === correctBoxIndex) {
-                    score += 1;
-                    updateScore();
-                    playNewRound();
-                } else {
-                    selectedSound.stop();
-                    gameOver();
-                }
-                break;
-            }
+    const keys = {
+        a: {
+            pressed: false
+        },
+        d: {
+            pressed: false
         }
     }
 
-    document.addEventListener('keydown', event => {
-        if (!gameStarted) return;
-        if (event.key === 'ArrowLeft') camera.position.x = Math.max(camera.position.x - 2, -2);
-        if (event.key === 'ArrowRight') camera.position.x = Math.min(camera.position.x + 2, 2);
-        checkCollision();
-    });
-
-    // Move the game forward
-    function moveForward() {
-        for (let box of boxes) {
-            box.position.z += 0.1;
-            if (box.position.z > 5) {
-                box.position.z = -10;
-                box.position.x = Math.floor(Math.random() * 3) * 2 - 2;
-            }
+    window.addEventListener('keydown', (event) => {
+        switch(event.code) {
+            case 'KeyA':
+                console.log("we pressed down a")
+                keys.a.pressed = true
+                break
+            case 'KeyD':
+                console.log("we pressed down d")
+                keys.d.pressed = true
+                break
         }
-    }
+    })
 
-    // Render loop
+    window.addEventListener('keyup', (event) => {
+        switch(event.code) {
+            case 'KeyA':
+                console.log("we pressed down a")
+                keys.a.pressed = false
+                break
+            case 'KeyD':
+                console.log("we pressed down d")
+                keys.d.pressed = false
+                break
+        }
+    })
+  
     function animate() {
-        if (!gameStarted) return;
-        requestAnimationFrame(animate);
-        moveForward();
-        renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+
+      // movement
+      cube.velocity.x = 0
+      if (keys.a.pressed) {
+        cube.velocity.x = -0.01
+      } else if (keys.d.pressed) {
+        cube.velocity.x = 0.01
+      }
+
+      cube.update(ground);
+    //   cube.rotation.x += 0.01
+    //   cube.rotation.y += 0.01
     }
-</script>
-</body>
-</html>
+    animate()
+  </script>
