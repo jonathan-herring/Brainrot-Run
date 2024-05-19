@@ -7,10 +7,9 @@ Brainrot Run is a first-person 3-lane running game where the player controls a c
 - The player starts with a character positioned in the middle lane.
 - As the character runs forward, three lanes with different images appear.
 - The player must quickly decide which lane to move into based on the audio that is played.
-- If the player runs into the correct image, their score increases by 1 and the character runs faster.
+- If the player runs into the correct image, their score increases by 1.
 - If the player runs into the wrong image, they lose the game.
-- The player's score and the high score are displayed on the screen.
-- To start a new game, the player can press any key.
+- The player's score is displayed on the screen.
 
 ## Installation
 
